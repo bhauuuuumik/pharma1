@@ -23,107 +23,158 @@ enum LedgerEntryType {
 }
 
 model Tenant {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
   stores    Store[]
   createdAt DateTime @default(now())
 }
 
 model Store {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   tenantId  String
   name      String
   code      String
-  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   staff     Staff[]
   products  Product[]
   batches   Batch[]
   sales     SaleInvoice[]
   ledgers   StockLedger[]
+  suppliers Supplier[]
+  purchases PurchaseInvoice[]
 
   @@unique([tenantId, code])
 }
 
 model Staff {
-  id           String @id @default(uuid())
-  tenantId     String
-  storeId      String
-  phone        String
-  pinHash      String
-  role         String
-  displayName  String
-  createdAt    DateTime @default(now())
+  id          String   @id @default(uuid())
+  tenantId    String
+  storeId     String
+  phone       String
+  pinHash     String
+  role        String
+  displayName String
+  createdAt   DateTime @default(now())
 
   store Store @relation(fields: [storeId], references: [id])
   @@unique([tenantId, phone])
 }
 
 model Product {
-  id             String @id @default(uuid())
-  tenantId       String
-  storeId        String
-  canonicalName  String
-  barcode        String?
-  scheduleFlag   ScheduleFlag @default(NONE)
-  mrp            Decimal @db.Decimal(10,2)
-  gstRate        Decimal @db.Decimal(5,2)
-  createdAt      DateTime @default(now())
+  id            String       @id @default(uuid())
+  tenantId      String
+  storeId       String
+  canonicalName String
+  barcode       String?
+  scheduleFlag  ScheduleFlag @default(NONE)
+  mrp           Decimal      @db.Decimal(10, 2)
+  gstRate       Decimal      @db.Decimal(5, 2)
+  createdAt     DateTime     @default(now())
 
-  store Store @relation(fields: [storeId], references: [id])
-  batches Batch[]
+  store            Store               @relation(fields: [storeId], references: [id])
+  batches          Batch[]
+  purchaseLineItem PurchaseLineItem[]
 
   @@index([tenantId, canonicalName])
   @@index([tenantId, barcode])
 }
 
 model Batch {
-  id          String @id @default(uuid())
-  storeId     String
-  productId   String
-  batchNo     String
-  expiryDate  DateTime
-  quantity    Int @default(0)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  storeId    String
+  productId  String
+  batchNo    String
+  expiryDate DateTime
+  quantity   Int      @default(0)
+  createdAt  DateTime @default(now())
 
-  store Store @relation(fields: [storeId], references: [id])
+  store Store   @relation(fields: [storeId], references: [id])
   product Product @relation(fields: [productId], references: [id])
   ledger StockLedger[]
 
   @@index([storeId, productId, expiryDate])
 }
 
-model StockLedger {
-  id          String @id @default(uuid())
+model Supplier {
+  id          String   @id @default(uuid())
   tenantId    String
   storeId     String
-  productId   String
-  batchId     String?
-  entryType   LedgerEntryType
-  quantity    Int
-  reason      String?
-  refType     String
-  refId       String
+  name        String
+  phone       String?
+  gstin       String?
   createdAt   DateTime @default(now())
 
+  store Store @relation(fields: [storeId], references: [id])
+  purchaseInvoices PurchaseInvoice[]
+
+  @@index([tenantId, storeId, name])
+}
+
+model PurchaseInvoice {
+  id             String   @id @default(uuid())
+  tenantId       String
+  storeId        String
+  supplierId     String
+  invoiceNo      String
+  invoiceDate    DateTime
+  totalAmount    Decimal  @db.Decimal(10, 2)
+  idempotencyKey String   @unique
+  createdAt      DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id])
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  lineItems PurchaseLineItem[]
+
+  @@unique([storeId, supplierId, invoiceNo])
+  @@index([storeId, invoiceDate])
+}
+
+model PurchaseLineItem {
+  id          String   @id @default(uuid())
+  purchaseId  String
+  productId   String
+  batchId     String
+  qty         Int
+  unitCost    Decimal  @db.Decimal(10, 2)
+  amount      Decimal  @db.Decimal(10, 2)
+
+  purchase PurchaseInvoice @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model StockLedger {
+  id        String          @id @default(uuid())
+  tenantId  String
+  storeId   String
+  productId String
+  batchId   String?
+  entryType LedgerEntryType
+  quantity  Int
+  reason    String?
+  refType   String
+  refId     String
+  createdAt DateTime        @default(now())
+
   batch Batch? @relation(fields: [batchId], references: [id])
+
   @@index([storeId, productId])
   @@index([storeId, batchId])
   @@index([storeId, createdAt])
 }
 
 model SaleInvoice {
-  id            String @id @default(uuid())
-  tenantId      String
-  storeId       String
-  deviceId      String
-  seriesPrefix  String
-  invoiceNo     Int
-  fy            String
-  status        String @default("ISSUED")
-  totalAmount   Decimal @db.Decimal(10,2)
-  paymentMode   String
-  idempotencyKey String @unique
-  createdAt     DateTime @default(now())
+  id             String   @id @default(uuid())
+  tenantId       String
+  storeId        String
+  deviceId       String
+  seriesPrefix   String
+  invoiceNo      Int
+  fy             String
+  status         String   @default("ISSUED")
+  totalAmount    Decimal  @db.Decimal(10, 2)
+  paymentMode    String
+  idempotencyKey String   @unique
+  createdAt      DateTime @default(now())
 
   lineItems SaleLineItem[]
 
@@ -132,41 +183,41 @@ model SaleInvoice {
 }
 
 model SaleLineItem {
-  id          String @id @default(uuid())
-  saleId       String
-  productId    String
-  batchId      String?
-  qty          Int
-  unitPrice    Decimal @db.Decimal(10,2)
-  amount       Decimal @db.Decimal(10,2)
+  id        String  @id @default(uuid())
+  saleId    String
+  productId String
+  batchId   String?
+  qty       Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  amount    Decimal @db.Decimal(10, 2)
 
   sale SaleInvoice @relation(fields: [saleId], references: [id], onDelete: Cascade)
 }
 
 model SyncEvent {
-  id              String @id @default(uuid())
-  eventId          String @unique
-  tenantId         String
-  storeId          String
-  deviceId         String
-  ts               DateTime
-  type             String
-  payload          Json
-  idempotencyKey   String @unique
-  createdAt        DateTime @default(now())
+  id            String   @id @default(uuid())
+  eventId       String   @unique
+  tenantId      String
+  storeId       String
+  deviceId      String
+  ts            DateTime
+  type          String
+  payload       Json
+  idempotencyKey String  @unique
+  createdAt     DateTime @default(now())
 
   @@index([storeId, createdAt])
 }
 
 model AuditEvent {
-  id          String @id @default(uuid())
-  tenantId    String
-  storeId     String
-  actorId     String?
-  action      String
-  entityType  String
-  entityId    String
-  reasonCode  String?
-  diffJson    Json?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  tenantId   String
+  storeId    String
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  reasonCode String?
+  diffJson   Json?
+  createdAt  DateTime @default(now())
 }

@@ -31,6 +31,20 @@ async function main() {
     },
   });
 
+
+  await prisma.supplier.upsert({
+    where: { id: 'sup-demo' },
+    update: {},
+    create: {
+      id: 'sup-demo',
+      tenantId: tenant.id,
+      storeId: store.id,
+      name: 'Demo Distributor',
+      phone: '9000000000',
+      gstin: '29ABCDE1234F1Z5',
+    },
+  });
+
   for (let i = 1; i <= 500; i++) {
     const product = await prisma.product.upsert({
       where: { id: `prod-${i}` },

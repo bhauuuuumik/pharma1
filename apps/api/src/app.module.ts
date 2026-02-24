@@ -5,9 +5,11 @@ import { ProductModule } from './product/product.module';
 import { SalesModule } from './sales/sales.module';
 import { StockModule } from './stock/stock.module';
 import { SyncModule } from './sync/sync.module';
+import { SupplierModule } from './supplier/supplier.module';
+import { PurchaseModule } from './purchase/purchase.module';
 
 @Module({
-  imports: [AuthModule, ProductModule, StockModule, SalesModule, SyncModule],
+  imports: [AuthModule, ProductModule, StockModule, SalesModule, SyncModule, SupplierModule, PurchaseModule],
   providers: [PrismaService],
 })
 export class AppModule {}

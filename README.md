@@ -3,7 +3,7 @@
 India-first pharmacy software baseline with offline-first POS and sync foundations.
 
 ## Monorepo structure
-- `apps/web` - React + Vite PWA-ready POS and inventory UI
+- `apps/web` - React + Vite PWA-ready POS, inventory, and manual purchase entry UI
 - `apps/api` - NestJS API with Prisma/PostgreSQL
 - `apps/mobile` - Flutter placeholder scaffold notes
 - `packages/shared` - shared types/schemas
@@ -49,4 +49,10 @@ pnpm -r test
 - default tenant/store/staff
 - 500 sample products
 - starter batches
-for instant POS demo.
+for instant POS demo, including a starter supplier.
+
+
+## Phase 2 additions
+- Supplier management API (`/suppliers`)
+- Purchase invoice posting API (`/purchases`) that updates batch stock and appends purchase ledger entries
+- FEFO-safe sale behavior and same-batch sales return handling
