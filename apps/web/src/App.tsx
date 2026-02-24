@@ -12,7 +12,7 @@ const headers = {
 type Supplier = { id: string; name: string };
 
 export function App() {
-  const [tab, setTab] = useState<'pos' | 'purchase'>('pos');
+  const [tab, setTab] = useState<'pos' | 'purchase' | 'scan'>('pos');
   const [q, setQ] = useState('');
   const [products, setProducts] = useState<any[]>([]);
   const [cart, setCart] = useState<any[]>([]);
@@ -26,6 +26,10 @@ export function App() {
   const [purchaseBatchNo, setPurchaseBatchNo] = useState('NEWB1');
   const [purchaseQty, setPurchaseQty] = useState(10);
   const [purchaseUnitCost, setPurchaseUnitCost] = useState(12);
+
+  const [scanText, setScanText] = useState('Medicine 1|BA10|2027-03-31|5|11.5');
+  const [scanId, setScanId] = useState('');
+  const [scanReview, setScanReview] = useState<any>(null);
 
   useEffect(() => {
     refreshPending();
@@ -83,6 +87,40 @@ export function App() {
       return;
     }
     alert('Purchase posted to stock ledger');
+  }
+
+
+  async function uploadAndProcessScan() {
+    const up = await fetch(`${API}/scan/upload`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        filename: `scan-${Date.now()}.txt`,
+        mimeType: 'text/plain',
+        sourceText: scanText,
+      }),
+    });
+    if (!up.ok) return alert('Upload failed');
+    const uploaded = await up.json();
+    setScanId(uploaded.id);
+
+    const pr = await fetch(`${API}/scan/${uploaded.id}/process`, { method: 'POST', headers });
+    if (!pr.ok) return alert('Process failed');
+
+    const rv = await fetch(`${API}/scan/${uploaded.id}/review`, { headers });
+    const review = await rv.json();
+    setScanReview(review);
+  }
+
+  async function confirmScanToPurchase() {
+    if (!scanId || !selectedSupplier) return alert('Scan and supplier required');
+    const res = await fetch(`${API}/scan/${scanId}/confirm`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ supplierId: selectedSupplier, idempotencyKey: crypto.randomUUID() }),
+    });
+    if (!res.ok) return alert('Confirm failed');
+    alert('Scan confirmed and posted to purchase ledger');
   }
 
   async function refreshPending() {
@@ -167,10 +205,11 @@ export function App() {
 
   return (
     <div style={{ padding: 16, fontFamily: 'sans-serif' }}>
-      <h2>Pharma POS (Phase 2)</h2>
+      <h2>Pharma POS (Phase 3)</h2>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
         <button onClick={() => setTab('pos')}>POS</button>
         <button onClick={() => setTab('purchase')}>Purchase Entry</button>
+        <button onClick={() => setTab('scan')}>Invoice Scan Review</button>
       </div>
 
       {tab === 'pos' ? (
@@ -227,7 +266,7 @@ export function App() {
             Print Invoice
           </button>
         </>
-      ) : (
+      ) : tab === 'purchase' ? (
         <>
           <h3>Manual Purchase Entry</h3>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -237,10 +276,7 @@ export function App() {
               onChange={(e) => setSupplierName(e.target.value)}
             />
             <button onClick={createSupplier}>Add Supplier</button>
-            <select
-              value={selectedSupplier}
-              onChange={(e) => setSelectedSupplier(e.target.value)}
-            >
+            <select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)}>
               <option value="">Select supplier</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -250,30 +286,37 @@ export function App() {
             </select>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              placeholder="Product ID"
-              value={purchaseProductId}
-              onChange={(e) => setPurchaseProductId(e.target.value)}
-            />
-            <input
-              placeholder="Batch"
-              value={purchaseBatchNo}
-              onChange={(e) => setPurchaseBatchNo(e.target.value)}
-            />
-            <input
-              type="number"
-              value={purchaseQty}
-              onChange={(e) => setPurchaseQty(Number(e.target.value))}
-            />
-            <input
-              type="number"
-              value={purchaseUnitCost}
-              onChange={(e) => setPurchaseUnitCost(Number(e.target.value))}
-            />
+            <input placeholder="Product ID" value={purchaseProductId} onChange={(e) => setPurchaseProductId(e.target.value)} />
+            <input placeholder="Batch" value={purchaseBatchNo} onChange={(e) => setPurchaseBatchNo(e.target.value)} />
+            <input type="number" value={purchaseQty} onChange={(e) => setPurchaseQty(Number(e.target.value))} />
+            <input type="number" value={purchaseUnitCost} onChange={(e) => setPurchaseUnitCost(Number(e.target.value))} />
             <button onClick={postPurchase}>Post Purchase</button>
           </div>
         </>
+      ) : (
+        <>
+          <h3>Invoice Scan Review (Human-in-loop)</h3>
+          <p>Paste OCR text lines in format NAME|BATCH|EXP|QTY|COST, then process and review confidence.</p>
+          <textarea value={scanText} onChange={(e) => setScanText(e.target.value)} rows={6} style={{ width: '100%' }} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button onClick={uploadAndProcessScan}>Upload & Process</button>
+            <button onClick={confirmScanToPurchase} disabled={!scanReview}>Confirm & Post to Stock</button>
+          </div>
+          {scanReview && (
+            <div style={{ marginTop: 12 }}>
+              <div>Low confidence lines: {scanReview.lowConfidenceCount}</div>
+              <ul>
+                {scanReview.lines.map((line: any) => (
+                  <li key={line.id} style={{ background: line.lowConfidence ? '#ffe6e6' : '#eaffea', padding: 6 }}>
+                    {line.productName} | {line.batchNo ?? '-'} | qty {line.qty} | cost ₹{line.unitCost} | conf {line.confidence}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
+
     </div>
   );
 }

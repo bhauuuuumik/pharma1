@@ -11,3 +11,9 @@
 - Purchase posting now creates/updates batches and appends `PURCHASE` entries to StockLedger.
 - Sales now enforce FEFO batch resolution when a batch is not provided and reject insufficient stock.
 - Sales returns default to the sold batch to preserve ledger correctness.
+
+
+## 2026-02-24 - Phase 3 scan pipeline baseline
+- Added a scan pipeline with explicit review state before posting to stock to keep human-in-loop control.
+- LLM extraction uses strict JSON schema + zod validation with heuristic fallback when API key/network is unavailable.
+- Confidence threshold is 0.8 for low-confidence highlighting in review UI.

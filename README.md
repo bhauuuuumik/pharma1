@@ -56,3 +56,10 @@ for instant POS demo, including a starter supplier.
 - Supplier management API (`/suppliers`)
 - Purchase invoice posting API (`/purchases`) that updates batch stock and appends purchase ledger entries
 - FEFO-safe sale behavior and same-batch sales return handling
+
+
+## Phase 3 additions
+- Invoice scan pipeline endpoints: upload, process, review, confirm (`/scan/*`)
+- OCR-to-structured extraction with confidence scoring + strict zod schema validation
+- Human-in-loop review UI with low-confidence highlighting before posting purchase stock
+- Sample invoice fixtures in `fixtures/invoices` for parser testing

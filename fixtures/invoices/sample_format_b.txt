@@ -1,0 +1,2 @@
+MEDICINE 3 | C303 | 2028-01-31 | 1 | 42
+damaged line no fields
