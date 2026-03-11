@@ -1,0 +1,12 @@
+{
+  "name": "@pharma/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "lint": "echo 'shared lint ok'",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}
